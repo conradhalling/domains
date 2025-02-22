@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+##########################
+# Custom for this project.
+venv313/
+data/
