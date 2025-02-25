@@ -20,6 +20,10 @@
         python3 request_domains.py data/names/a_science.txt --csv_file a_science.csv
         python3 request_domains.py data/names/test_domains.txt --csv_file test_domains.csv
 
+    NOTES
+        This script provides examples of using argparse, csv, dataclasses,
+        logging, fake_useragent, and requests.
+
     TO DO
         -   Improve the logic to extract the final results.
         -   Count the results.
@@ -31,11 +35,36 @@
 import argparse
 import csv
 import dataclasses
+import logging
 import os
-import sys
 
 import fake_useragent
 import requests
+
+logger = logging.getLogger(__name__)
+
+@dataclasses.dataclass
+class Counters:
+    total_domains: int = 0
+    total_200_status: int = 0
+    total_other_status: int = 0
+    total_exceptions: int = 0
+
+    def increment(self, status_code):
+        self.total_domains += 1
+        if status_code == 200:
+            self.total_200_status += 1
+        elif status_code is not None:
+            self.total_other_status += 1
+        else:
+            self.total_exceptions += 1
+
+    def log(self):
+        logger.info("total_domains: {}".format(self.total_domains))
+        logger.info("total_200_status: {}".format(self.total_200_status))
+        logger.info("total_other_status: {}".format(self.total_other_status))
+        logger.info("total_exceptions: {}".format(self.total_exceptions))
+
 
 @dataclasses.dataclass
 class DomainResponse:
@@ -47,19 +76,120 @@ class DomainResponse:
     status_reason: str
     response_url: str
 
-    def print_domain_response(self, file):
-        """
-            file is sys.stdout or sys.stderr.
-        """
-        print(self.domain, file=file)
-        print(self.request_type, file=file)
-        print(self.request_url, file=file)
+    def log(self):
+        logger.info(self.domain)
+        logger.info(self.request_type)
+        logger.info(self.request_url)
         if self.exception_name is not None:
-            print(self.exception_name, file=file)
+            logger.info(self.exception_name)
         else:
-            print(self.status_code, self.status_reason, file=file)
-            print(self.response_url, file=file)
-        print(flush=True, file=file)
+            logger.info(self.status_code)
+            logger.info(self.status_reason)
+            logger.info(self.response_url)
+        logger.info("")
+    
+    def update_from(self, other_domain_response):
+        self.domain = other_domain_response.domain
+        self.request_url = other_domain_response.request_url
+        self.request_type = other_domain_response.request_type
+        self.exception_name = other_domain_response.exception_name
+        self.status_code = other_domain_response.status_code
+        self.status_reason = other_domain_response.status_reason
+        self.response_url = other_domain_response.response_url
+
+
+def get_domain_response(domain):
+    # Make an http request to the domain.
+    domain_response = make_request("http://", "", domain, "head")
+    domain_response.log()
+
+    # On status_code 405, try again with "get".
+    if domain_response.status_code == 405:
+        domain_response = make_request("http://", "", domain, "get")
+        domain_response.log()
+
+    # If the response was an exception or a status code other than 200,
+    # make an http request to the www subdomain.
+    if domain_response.exception_name is not None or domain_response.status_code != 200:
+        new_domain_response = make_request("http://", "www.", domain, "head")
+        new_domain_response.log()
+
+        # On status_code 405, try again with "get".
+        if new_domain_response.status_code == 405:
+            new_domain_response = make_request("http://", "www.", domain, "get")
+            new_domain_response.log()
+        
+        # Keep the new reponse if it returned status code 200.
+        if new_domain_response.status_code == 200:
+            domain_response.update_from(new_domain_response)
+        
+        # Keep the new response if it returned a status code and the old
+        # response contained an exception.
+        if domain_response.status_code is None and new_domain_response.status_code is not None:
+            domain_response.update_from(new_domain_response)
+
+    # If the response was an exception or a status code other than 200,
+    # make an https request to the domain.
+    if domain_response.exception_name is not None or domain_response.status_code != 200:
+        new_domain_response = make_request("https://", "", domain, "head")
+        new_domain_response.log()
+
+        # On status_code 405, try again with "get".
+        if new_domain_response.status_code == 405:
+            new_domain_response = make_request("https://", "", domain, "get")
+            new_domain_response.log()
+        
+        # Keep the new reponse if it returned status code 200.
+        if new_domain_response.status_code == 200:
+            domain_response.update_from(new_domain_response)
+        
+        # Keep the new response if it returned a status code and the old
+        # response contained an exception.
+        if domain_response.status_code is None and new_domain_response.status_code is not None:
+            domain_response.update_from(new_domain_response)
+
+    # If the response was an exception or a status code other than 200,
+    # make an https request to the www subdomain.
+    # Try again with https:// and www.
+    if domain_response.exception_name is not None or domain_response.status_code != 200:
+        new_domain_response = make_request("https://", "www.", domain, "head")
+        new_domain_response.log()
+
+        # On status_code 405, try again with "get".
+        if new_domain_response.status_code == 405:
+            new_domain_response = make_request("https://", "www.", domain, "get")
+            new_domain_response.log()
+
+        # Keep the new reponse if it returned status code 200.
+        if new_domain_response.status_code == 200:
+            domain_response.update_from(new_domain_response)
+        
+        # Keep the new response if it returned a status code and the old
+        # response contained an exception.
+        if domain_response.status_code is None and new_domain_response.status_code is not None:
+            domain_response.update_from(new_domain_response)
+    
+    logger.info("final response")
+    domain_response.log()
+    return domain_response
+
+
+def get_request_method(request_type):
+    if request_type == "head":
+        return requests.head
+    elif request_type == "get":
+        return requests.get
+    else:
+        raise ValueError("Invalid request type: {}".format(request_type))
+
+
+def init_logging(args):
+    logfilename = os.path.basename(os.path.splitext(__file__)[0]) + '.log'
+    logging_numeric_level = getattr(logging, args.log_level.upper(), None)
+    if not isinstance(logging_numeric_level, int):
+        raise ValueError('Invalid log level: %s' % args.log_level)
+    logging.basicConfig(filename=logfilename, encoding='utf-8', level=logging_numeric_level)
+
 
 def make_request(scheme, subdomain, domain, request_type):
     """
@@ -91,41 +221,37 @@ def make_request(scheme, subdomain, domain, request_type):
         response_url=response_url)
     return domain_response
 
-def get_request_method(request_type):
-    if request_type == "head":
-        return requests.head
-    elif request_type == "get":
-        return requests.get
-    else:
-        raise ValueError("Invalid request type: {}".format(request_type))
 
 def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Send an HTTP request to each domain and record the response",
-        epilog=f"Example:\n  {os.path.basename(__file__)} --domains_file data/names/a_science.txt > a_science.out.txt"
+        epilog=f"Example:\n  python3 {os.path.basename(__file__)} --domains_file data/names/a_science.txt > a_science.out.txt"
     )
     parser.add_argument(
         "--domains_file",
         help="input file containing domains to request",
-        required=True)
+        required=True,
+    )
     parser.add_argument(
         "--csv_file",
         help="output file for writing results",
-        required=True)
+        required=True,
+    )
+    parser.add_argument(
+        "--log_level",
+        choices=["debug", "info", "warning", "error", "critical"],
+        help="logging level, one of debug, info, warning, error, critical",
+        required=True,
+    )
     args = parser.parse_args()
     return args
 
-def main():
-    args = parse_args()
+
+def process_data(args):
     domains_file = args.domains_file
     csv_file = args.csv_file
-
-    # Initialize counters.
-    total_domains = 0
-    total_200_status = 0
-    total_other_status = 0
-    total_exceptions = 0
+    counters = Counters()
 
     # Initialize the csv output file as a text file with a header line.
     with open(csv_file, "w") as csv_f:
@@ -142,131 +268,15 @@ def main():
             ]
         )
 
-        # Open the input file and iterate line by line, writing the
-        # results to the CSV output file.
+        # Open the input file and iterate through the domains line by line.
+        # Get the response for each domain (logging at the INFO level).
+        # Write the response to the CSV output file.
+        # Log the totals.
         with open(domains_file, 'r') as domains_f:
             for line in domains_f:
                 domain = line.strip()
-
-                # Make an http request to the domain.
-                domain_response = make_request("http://", "", domain, "head")
-                domain_response.print_domain_response(sys.stderr)
-
-                # On status_code 405, try again with "get".
-                if domain_response.status_code == 405:
-                    domain_response = make_request("http://", "", domain, "get")
-                    domain_response.print_domain_response(sys.stderr)
-
-                # If the response was an exception or a status code other than 200,
-                # make an http request to the www subdomain.
-                if domain_response.exception_name is not None or domain_response.status_code != 200:
-                    new_domain_response = make_request("http://", "www.", domain, "head")
-                    new_domain_response.print_domain_response(sys.stderr)
-
-                    # On status_code 405, try again with "get".
-                    if new_domain_response.status_code == 405:
-                        new_domain_response = make_request("http://", "www.", domain, "get")
-                        new_domain_response.print_domain_response(sys.stderr)
-                    
-                    # Keep the new reponse if it return status code 200.
-                    if new_domain_response.status_code == 200:
-                        domain_response.domain = new_domain_response.domain
-                        domain_response.request_url = new_domain_response.request_url
-                        domain_response.request_type = new_domain_response.request_type
-                        domain_response.exception_name = new_domain_response.exception_name
-                        domain_response.status_code = new_domain_response.status_code
-                        domain_response.status_reason = new_domain_response.status_reason
-                        domain_response.response_url = new_domain_response.response_url
-                    
-                    # Keep the new response if it returned a status code and the old
-                    # response contained an exception.
-                    if domain_response.status_code is None and new_domain_response.status_code is not None:
-                        domain_response.domain = new_domain_response.domain
-                        domain_response.request_url = new_domain_response.request_url
-                        domain_response.request_type = new_domain_response.request_type
-                        domain_response.exception_name = new_domain_response.exception_name
-                        domain_response.status_code = new_domain_response.status_code
-                        domain_response.status_reason = new_domain_response.status_reason
-                        domain_response.response_url = new_domain_response.response_url
-
-                # If the response was an exception or a status code other than 200,
-                # make an https request to the domain.
-                if domain_response.exception_name is not None or domain_response.status_code != 200:
-                    new_domain_response = make_request("https://", "", domain, "head")
-                    new_domain_response.print_domain_response(sys.stderr)
-
-                    # On status_code 405, try again with "get".
-                    if new_domain_response.status_code == 405:
-                        new_domain_response = make_request("https://", "", domain, "get")
-                        new_domain_response.print_domain_response(sys.stderr)
-                    
-                    # Keep the new reponse if it return status code 200.
-                    if new_domain_response.status_code == 200:
-                        domain_response.domain = new_domain_response.domain
-                        domain_response.request_url = new_domain_response.request_url
-                        domain_response.request_type = new_domain_response.request_type
-                        domain_response.exception_name = new_domain_response.exception_name
-                        domain_response.status_code = new_domain_response.status_code
-                        domain_response.status_reason = new_domain_response.status_reason
-                        domain_response.response_url = new_domain_response.response_url
-                    
-                    # Keep the new response if it returned a status code and the old
-                    # response contained an exception.
-                    if domain_response.status_code is None and new_domain_response.status_code is not None:
-                        domain_response.domain = new_domain_response.domain
-                        domain_response.request_url = new_domain_response.request_url
-                        domain_response.request_type = new_domain_response.request_type
-                        domain_response.exception_name = new_domain_response.exception_name
-                        domain_response.status_code = new_domain_response.status_code
-                        domain_response.status_reason = new_domain_response.status_reason
-                        domain_response.response_url = new_domain_response.response_url
-
-                # If the response was an exception or a status code other than 200,
-                # make an https request to the www subdomain.
-                # Try again with https:// and www.
-                if domain_response.exception_name is not None or domain_response.status_code != 200:
-                    new_domain_response = make_request("https://", "www.", domain, "head")
-                    new_domain_response.print_domain_response(sys.stderr)
-
-                    # On status_code 405, try again with "get".
-                    if new_domain_response.status_code == 405:
-                        new_domain_response = make_request("https://", "www.", domain, "get")
-                        new_domain_response.print_domain_response(sys.stderr)
-
-                    # Keep the new reponse if it return status code 200.
-                    if new_domain_response.status_code == 200:
-                        domain_response.domain = new_domain_response.domain
-                        domain_response.request_url = new_domain_response.request_url
-                        domain_response.request_type = new_domain_response.request_type
-                        domain_response.exception_name = new_domain_response.exception_name
-                        domain_response.status_code = new_domain_response.status_code
-                        domain_response.status_reason = new_domain_response.status_reason
-                        domain_response.response_url = new_domain_response.response_url
-                    
-                    # Keep the new response if it returned a status code and the old
-                    # response contained an exception.
-                    if domain_response.status_code is None and new_domain_response.status_code is not None:
-                        domain_response.domain = new_domain_response.domain
-                        domain_response.request_url = new_domain_response.request_url
-                        domain_response.request_type = new_domain_response.request_type
-                        domain_response.exception_name = new_domain_response.exception_name
-                        domain_response.status_code = new_domain_response.status_code
-                        domain_response.status_reason = new_domain_response.status_reason
-                        domain_response.response_url = new_domain_response.response_url
-                
-                print("final response", file=sys.stderr)
-                domain_response.print_domain_response(sys.stderr)
-
-                # Increment the appropriate counter.
-                total_domains += 1
-                if domain_response.status_code == 200:
-                    total_200_status += 1
-                elif domain_response.status_code is not None:
-                    total_other_status += 1
-                else:
-                    total_exceptions += 1
-
-                # Write the output to the CSV file.
+                domain_response = get_domain_response(domain)
+                counters.increment(domain_response.status_code)
                 csv_writer.writerow(
                     [
                         domain_response.domain,
@@ -278,11 +288,18 @@ def main():
                         domain_response.response_url,
                     ]
                 )
-    # Report totals.
-    print(f"total_domains: {total_domains}")
-    print(f"total_200_status: {total_200_status}")
-    print(f"total_other_status: {total_other_status}")
-    print(f"total_exceptions: {total_exceptions}")
+    return counters
+
+
+def main():
+    args = parse_args()
+    init_logging(args)
+    logger.info(__file__ + ' started')
+    # Process the data and write the response data to the CSV file.
+    counters = process_data(args)
+    counters.log()
+    logger.info(__file__ + ' finished')
+
 
 if __name__ == "__main__":
     main()
