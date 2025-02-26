@@ -80,27 +80,27 @@ def process_csv_data(args):
             # Process the data lines.
             for row in csv_reader:
                 (domain, request_url, request_type, exception_name, status_code, status_reason, response_url) = row
-                print("        <tr>", file=html_file)
-                print(f"          <td>{domain}</td>", file=html_file)
-                print(f'          <td><a href="{request_url}" target="_blank">{request_url}</td>', file=html_file)
-                print(f"          <td>{request_type}</td>", file=html_file)
+                print('        <tr class="adaptive">', file=html_file)
+                print(f'          <td class="adaptive">{domain}</td>', file=html_file)
+                print(f'          <td class="adaptive"><a class="adaptive" href="{request_url}" target="_blank">{request_url}</td>', file=html_file)
+                print(f'          <td class="adaptive">{request_type}</td>', file=html_file)
                 if exception_name != "":
-                    print(f"          <td>{exception_name}</td>", file=html_file)
+                    print(f'          <td class="adaptive">{exception_name}</td>', file=html_file)
                 else:
-                    print("          <td></td>", file=html_file)
+                    print('          <td class="adaptive"></td>', file=html_file)
                 if status_code != "":
-                    print(f"          <td>{status_code}</td>", file=html_file)
+                    print(f'          <td class="adaptive">{status_code}</td>', file=html_file)
                 else:
-                    print("          <td></td>", file=html_file)
+                    print('          <td class="adaptive"></td>', file=html_file)
                 if status_reason != "":
-                    print(f"          <td>{status_reason}</td>", file=html_file)
+                    print(f'          <td class="adaptive">{status_reason}</td>', file=html_file)
                 else:
-                    print("          <td></td>", file=html_file)
+                    print('          <td class="adaptive"></td>', file=html_file)
                 if response_url != "":
-                    print(f'          <td><a href="{response_url}" target="_blank">{response_url}</td>', file=html_file)
+                    print(f'          <td class="adaptive"><a class="adaptive" href="{response_url}" target="_blank">{response_url}</td>', file=html_file)
                 else:
-                    print("          <td></td>", file=html_file)
-                print("        </tr>", file=html_file)
+                    print('          <td class="adaptive"></td>', file=html_file)
+                print('        </tr>', file=html_file)
         finish_html(html_file)
 
 
@@ -121,7 +121,7 @@ def start_html(html_file):
           table {
             table-layout: fixed;
             border-collapse: collapse;
-            border: 3px solid #7f7f7f;
+            border: 3px solid #cccccc;
           }
 
           thead tr {
@@ -145,26 +145,61 @@ def start_html(html_file):
             text-overflow: ellipsis;
             max-width: 15rem;
           }
+
+          @media (prefers-color-scheme: dark) {
+            :root {
+              background-color: #111111;
+              color: #ffffff;
+            }
+
+            table.adaptive {
+              border: 3px solid #444444;
+            }
+            
+            thead tr.adaptive {
+              background-color: #333333;
+            }
+
+            tbody tr:nth-child(odd).adaptive {
+              background-color: #111111;
+            }
+
+            tbody tr:nth-child(even).adaptive {
+              background-color: #1c1c1c;
+            }
+
+            th.adaptive,
+            td.adaptive {
+              border: 1px solid #444444;
+            }
+
+            a.adaptive {
+              color: #9999ff;
+            }
+
+            a:visited.adaptive {
+              color: #cda9ef;
+            }
+          }
         </style>
       </head>
 
       <body>
-        <table>
+        <table class="adaptive">
           <caption>Domains from the .science TLD starting with "a"</caption>
           <thead>
-            <tr>
-              <th>domain</th>
-              <th>request_url</th>
-              <th>request_type</th>
-              <th>exception_name</th>
-              <th>status_code</th>
-              <th>status_reason</th>
-              <th>response_url</th>
+            <tr class="adaptive">
+              <th class="adaptive">domain</th>
+              <th class="adaptive">request_url</th>
+              <th class="adaptive">request_type</th>
+              <th class="adaptive">exception_name</th>
+              <th class="adaptive">status_code</th>
+              <th class="adaptive">status_reason</th>
+              <th class="adaptive">response_url</th>
             </tr>
           </thead>
           <tbody>"""
     print(textwrap.dedent(html_start), file=html_file)
-
 
 
 def finish_html(html_file):
