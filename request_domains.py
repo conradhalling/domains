@@ -1,35 +1,68 @@
 """
-    Iterate through domain names in the input file.
-    Send an HTTP request to each domain and record the response.
+DESCRIPTION
+    Find active internet domains by iterating through domain names from the
+    input file, sending one or more HTTP(S) requests to the domain, and
+    recording the best response.
 
     For a domain, e.g. "example.science", make a request to the following URLS:
         http://example.science
         http://www.example.science
         https://example.science
         https://www.example.science
-    using HEAD first, then GET when HEAD returns a 405 status code.
+    using a HEAD request first, then a GET request if the HEAD request returns
+    a 405 status code, iterating through the URLs until the returned status
+    code is 200 OK or the URLs are exhausted.
 
-    Each request:
-        -   adds a User-Agent (Chrome for macOS) to the headers to get responses
-            from sites that screen for web scraping
-        -   uses a timeout of 10 seconds
-        -   allows redirects
+    Each request adds a User-Agent (Chrome for macOS) to the headers (to get
+    a response from a site that screens for web scraping), uses a timeout of
+    10 seconds, and allows redirects.
 
-    EXAMPLES
-        python3 request_domains.py --help
-        python3 request_domains.py data/names/a_science.txt --csv_file a_science.csv
-        python3 request_domains.py data/names/test_domains.txt --csv_file test_domains.csv
+    The earliest HTTP 200 response is recorded for the domain. Otherwise, a
+    response containing a status code is preferred over a failed connection.
+        
+    For each domain, one result is written to the CSV output file, which
+    contains the following columns:
+        domain          the input domain (e.g., "example.science")
+        request_url     the URL (e.g., "http://example.science") to which
+                        the request was made
+        request_type    the type of HTTP request used ("head" or "get")
+        exception_name  the name of the exception raised if no connection
+                        could be made (ConnectionError, ConnectionTimeout,
+                        ReadTimeout, or SSLError)
+        status_code     the HTTP status code from the response (e.g., 200)
+        status_reason   the HTTP status code reason from the response
+                        (e.g., "OK")
+        response_url    the URL from the response after redirects (e.g.,
+                        "https://www.example.science/")
 
-    NOTES
-        This script provides examples of using argparse, csv, dataclasses,
-        logging, fake_useragent, and requests.
+    The script logs the total counts for:
+        -   domains
+        -   200 status codes
+        -   combined other status codes
+        -   combined exceptions
 
-    TO DO
-        -   Improve the logic to extract the final results.
-        -   Count the results.
-            -   How many domains returned a 200 status?
-            -   How many domains returned a status that was not 200?
-            -   How many domains had a connection error?
+    The script writes a log file named request_domains.log to the working
+    directory. The logging level must be set to one of the following: debug,
+    info, warning, error, or critical.
+    
+EXAMPLES
+    python3 request_domains.py --help
+
+    # Process some domains from the .science TLD.
+    python3 request_domains.py \
+        --domains_file  data/names/a_science.txt \
+        --csv_file      data/output/a_science.csv \
+        --log_level     info
+
+    # Test with 11 domains from the .science TLD.
+    python3 request_domains.py \
+        --domains_file  data/names/test_domains.txt \
+        --csv_file      data/output/test_domains.csv \
+        --log_level     info
+
+NOTES
+    This script provides examples of using the following packages: argparse,
+    csv, dataclasses, logging, os.path, fake_useragent, and requests.
 """
 
 import argparse
@@ -188,7 +221,10 @@ def init_logging(args):
     logging_numeric_level = getattr(logging, args.log_level.upper(), None)
     if not isinstance(logging_numeric_level, int):
         raise ValueError('Invalid log level: %s' % args.log_level)
-    logging.basicConfig(filename=logfilename, encoding='utf-8', level=logging_numeric_level)
+    logging.basicConfig(
+        filename=logfilename,
+        encoding='utf-8',
+        level=logging_numeric_level)
 
 
 def make_request(scheme, subdomain, domain, request_type):
@@ -196,7 +232,8 @@ def make_request(scheme, subdomain, domain, request_type):
         Use Chrome for macOS as the user agent.
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
     """
-    ua = fake_useragent.UserAgent(browsers="Chrome", os="Mac OS X", platforms="desktop")
+    ua = fake_useragent.UserAgent(
+        browsers="Chrome", os="Mac OS X", platforms="desktop")
     request_url = scheme + subdomain + domain
     request_method = get_request_method(request_type)
     headers = {"User-Agent": str(ua.chrome) }
@@ -205,7 +242,8 @@ def make_request(scheme, subdomain, domain, request_type):
     response_url = None
     exception_name = None
     try:
-        response = request_method(request_url, headers=headers, allow_redirects=True, timeout=10)
+        response = request_method(
+            request_url, headers=headers, allow_redirects=True, timeout=10)
         status_code = response.status_code
         status_reason = response.reason
         response_url = response.url
