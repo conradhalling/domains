@@ -10,27 +10,19 @@ EXAMPLES
         --csv_file      data/output/a_science.csv \
         --html_file     data/output/a_science.html \
         --log_level     info
+
+NOTES
+    I copied the background color and link colors for dark mode from the Mozilla
+    Developer Network dark theme.
 """
 
 import argparse
 import csv
-import dataclasses
 import logging
 import os
 import textwrap
 
 logger = logging.getLogger(__name__)
-
-
-@dataclasses.dataclass
-class DomainResponse:
-    domain: str
-    request_url: str
-    request_type: str
-    exception_name: str
-    status_code: int
-    status_reason: str
-    response_url: str
 
 
 def init_logging(args):
@@ -47,23 +39,28 @@ def init_logging(args):
 def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Send an HTTP request to each domain and record the response",
-        epilog=f"Example:\n  python3 {os.path.basename(__file__)} --domains_file data/names/a_science.txt > a_science.out.txt"
+        description="Convert a domains CSV file to an HTML file",
+        epilog=textwrap.dedent(f"""
+        Example:
+          python3 {os.path.basename(__file__)} \\
+            --csv_file   data/output/a_science.csv \\
+            --html_file  data/output/a_science.html \\
+            --log_level  info""")
     )
     parser.add_argument(
         "--csv_file",
-        help="input file for reading data",
+        help="input CSV file",
         required=True,
     )
     parser.add_argument(
         "--html_file",
-        help="output file containing HTML table",
+        help="output HTML file",
         required=True,
     )
     parser.add_argument(
         "--log_level",
         choices=["debug", "info", "warning", "error", "critical"],
-        help="logging level, one of debug, info, warning, error, critical",
+        help="logging level",
         required=True,
     )
     args = parser.parse_args()
@@ -84,18 +81,9 @@ def process_csv_data(args):
                 print(f'          <td class="adaptive">{domain}</td>', file=html_file)
                 print(f'          <td class="adaptive"><a class="adaptive" href="{request_url}" target="_blank">{request_url}</td>', file=html_file)
                 print(f'          <td class="adaptive">{request_type}</td>', file=html_file)
-                if exception_name != "":
-                    print(f'          <td class="adaptive">{exception_name}</td>', file=html_file)
-                else:
-                    print('          <td class="adaptive"></td>', file=html_file)
-                if status_code != "":
-                    print(f'          <td class="adaptive">{status_code}</td>', file=html_file)
-                else:
-                    print('          <td class="adaptive"></td>', file=html_file)
-                if status_reason != "":
-                    print(f'          <td class="adaptive">{status_reason}</td>', file=html_file)
-                else:
-                    print('          <td class="adaptive"></td>', file=html_file)
+                print(f'          <td class="adaptive">{exception_name}</td>', file=html_file)
+                print(f'          <td class="adaptive">{status_code}</td>', file=html_file)
+                print(f'          <td class="adaptive">{status_reason}</td>', file=html_file)
                 if response_url != "":
                     print(f'          <td class="adaptive"><a class="adaptive" href="{response_url}" target="_blank">{response_url}</td>', file=html_file)
                 else:
@@ -121,23 +109,23 @@ def start_html(html_file):
           table {
             table-layout: fixed;
             border-collapse: collapse;
-            border: 3px solid #cccccc;
+            border: 3px solid #bfbfbf;
           }
 
           thead tr {
-            background-color: #dddddd;
+            background-color: #d9d9d9;
           }
           
           tbody tr:nth-child(odd) {
-            background-color: #ffffff;
+            background-color: #e6e6e6;
           }
 
           tbody tr:nth-child(even) {
-            background-color: #eeeeee;
+            background-color: #d9d9d9;
           }
 
           th, td {
-            border: 1px solid #cccccc;
+            border: 1px solid #bfbfbf;
             font-family: Verdana;
             font-size: 0.625rem;
             padding: 2px 3px;
@@ -148,12 +136,12 @@ def start_html(html_file):
 
           @media (prefers-color-scheme: dark) {
             :root {
-              background-color: #111111;
+              background-color: #1a1a1a;
               color: #ffffff;
             }
 
             table.adaptive {
-              border: 3px solid #444444;
+              border: 3px solid #404040;
             }
             
             thead tr.adaptive {
@@ -161,24 +149,24 @@ def start_html(html_file):
             }
 
             tbody tr:nth-child(odd).adaptive {
-              background-color: #111111;
+              background-color: #1a1a1a;
             }
 
             tbody tr:nth-child(even).adaptive {
-              background-color: #1c1c1c;
+              background-color: #262626;
             }
 
             th.adaptive,
             td.adaptive {
-              border: 1px solid #444444;
+              border: 1px solid #404040;
             }
 
             a.adaptive {
-              color: #9999ff;
+              color: rgb(140, 180, 255);
             }
 
             a:visited.adaptive {
-              color: #cda9ef;
+              color: rgb(255, 173, 255);
             }
           }
         </style>

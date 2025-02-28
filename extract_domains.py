@@ -1,8 +1,3 @@
-import collections
-import gzip
-import re
-import sys
-
 """
 Extract the distinct domains for a given TLD and sort the values in reverse order
 by the number of hits.
@@ -10,7 +5,19 @@ by the number of hits.
 This requires looking at the cdx-nnnnn.gz files, which are sorted alphabetically
 by TLD, to find the files containing the TLD you're interested in. Or you could
 download all the files (230 GB of .gz files) and process them all.
+
+TO DO
+    -   add logging
+    -   reduce xxx.yyy.zzz.aaa to zzz.aaa
+    -   reduce yyy.zzz.aaa to zzz.aaa
+    -   add parsing of arguments
 """
+
+import collections
+import gzip
+import logging
+import re
+import sys
 
 def process_file(filename, tld):
     # tld is ".info", ".science", etc.
@@ -38,7 +45,8 @@ def process_file(filename, tld):
             #     print("No match!\n", line.decode(), "\n", file=sys.stderr)
     return domains_dict
 
-if __name__ == "__main__":
+
+def main():
     total_dict = dict()
     # .info
     tld = ".info"
@@ -52,3 +60,7 @@ if __name__ == "__main__":
     sorted_by_values = dict(sorted(total_dict.items(), key=lambda item: item[1], reverse=True))
     for key, value in sorted_by_values.items():
         print("{} {}".format(key, value))
+
+
+if __name__ == "__main__":
+    main()

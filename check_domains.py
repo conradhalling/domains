@@ -41,21 +41,21 @@ DESCRIPTION
         -   combined other status codes
         -   combined exceptions
 
-    The script writes a log file named request_domains.log to the working
+    The script writes a log file named check_domains.log to the working
     directory. The logging level must be set to one of the following: debug,
     info, warning, error, or critical.
     
 EXAMPLES
-    python3 request_domains.py --help
+    python3 check_domains.py --help
 
     # Process some domains from the .science TLD.
-    python3 request_domains.py \
+    python3 check_domains.py \
         --domains_file  data/names/a_science.txt \
         --csv_file      data/output/a_science.csv \
         --log_level     info
 
     # Test with 11 domains from the .science TLD.
-    python3 request_domains.py \
+    python3 check_domains.py \
         --domains_file  data/names/test_domains.txt \
         --csv_file      data/output/test_domains.csv \
         --log_level     info
@@ -70,6 +70,7 @@ import csv
 import dataclasses
 import logging
 import os
+import textwrap
 
 import fake_useragent
 import requests
@@ -263,12 +264,17 @@ def make_request(scheme, subdomain, domain, request_type):
 def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="Send an HTTP request to each domain and record the response",
-        epilog=f"Example:\n  python3 {os.path.basename(__file__)} --domains_file data/names/a_science.txt > a_science.out.txt"
+        description="Send an HTTP request to each domain website and record the response",
+        epilog=textwrap.dedent(f"""
+        Example:
+          python3 {os.path.basename(__file__)} \\
+            --domains_file  data/names/a_science.txt \\
+            --csv_file      data/output/a_science.csv \\
+            --log_level     info""")
     )
     parser.add_argument(
         "--domains_file",
-        help="input file containing domains to request",
+        help="input file containing domains to check",
         required=True,
     )
     parser.add_argument(
@@ -279,7 +285,7 @@ def parse_args():
     parser.add_argument(
         "--log_level",
         choices=["debug", "info", "warning", "error", "critical"],
-        help="logging level, one of debug, info, warning, error, critical",
+        help="logging level",
         required=True,
     )
     args = parser.parse_args()
