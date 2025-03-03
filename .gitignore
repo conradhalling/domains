@@ -174,4 +174,5 @@ cython_debug/
 # Custom for this project.
 venv313/
 data/
+logs/
 .DS_Store

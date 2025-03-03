@@ -25,14 +25,15 @@ import textwrap
 logger = logging.getLogger(__name__)
 
 
-def init_logging(args):
-    logfilename = os.path.basename(os.path.splitext(__file__)[0]) + '.log'
-    logging_numeric_level = getattr(logging, args.log_level.upper(), None)
+def init_logging(log_file, log_level):
+    logging_numeric_level = getattr(logging, log_level.upper(), None)
     if not isinstance(logging_numeric_level, int):
-        raise ValueError('Invalid log level: %s' % args.log_level)
+        raise ValueError('Invalid log level: %s' % log_level)
+    format = "[%(filename)s:%(lineno)4d - %(funcName)35s() ] %(levelname)s: %(message)s"
     logging.basicConfig(
-        filename=logfilename,
+        filename=log_file,
         encoding='utf-8',
+        format=format,
         level=logging_numeric_level)
 
 
@@ -45,6 +46,7 @@ def parse_args():
           python3 {os.path.basename(__file__)} \\
             --csv_file   data/output/a_science.csv \\
             --html_file  data/output/a_science.html \\
+            --log_file   logs/create_html_table.log \\
             --log_level  info""")
     )
     parser.add_argument(
@@ -58,6 +60,11 @@ def parse_args():
         required=True,
     )
     parser.add_argument(
+        "--log_file",
+        help="output log file",
+        required=True,
+    )
+    parser.add_argument(
         "--log_level",
         choices=["debug", "info", "warning", "error", "critical"],
         help="logging level",
@@ -67,32 +74,32 @@ def parse_args():
     return args
 
 
-def process_csv_data(args):
-    with open(args.html_file, "w") as html_file:
-        start_html(html_file)
-        with open(args.csv_file, "r") as csv_file:
-            csv_reader = csv.reader(csv_file)
+def process_csv_data(csv_file, html_file):
+    with open(html_file, "w") as html_f:
+        start_html(html_f)
+        with open(csv_file, "r") as csv_f:
+            csv_reader = csv.reader(csv_f)
             # Skip the header line.
             row = next(csv_reader)
             # Process the data lines.
             for row in csv_reader:
                 (domain, request_url, request_type, exception_name, status_code, status_reason, response_url) = row
-                print('        <tr class="adaptive">', file=html_file)
-                print(f'          <td class="adaptive">{domain}</td>', file=html_file)
-                print(f'          <td class="adaptive"><a class="adaptive" href="{request_url}" target="_blank">{request_url}</td>', file=html_file)
-                print(f'          <td class="adaptive">{request_type}</td>', file=html_file)
-                print(f'          <td class="adaptive">{exception_name}</td>', file=html_file)
-                print(f'          <td class="adaptive">{status_code}</td>', file=html_file)
-                print(f'          <td class="adaptive">{status_reason}</td>', file=html_file)
+                print('        <tr class="adaptive">', file=html_f)
+                print(f'          <td class="adaptive">{domain}</td>', file=html_f)
+                print(f'          <td class="adaptive"><a class="adaptive" href="{request_url}" target="_blank">{request_url}</td>', file=html_f)
+                print(f'          <td class="adaptive">{request_type}</td>', file=html_f)
+                print(f'          <td class="adaptive">{exception_name}</td>', file=html_f)
+                print(f'          <td class="adaptive">{status_code}</td>', file=html_f)
+                print(f'          <td class="adaptive">{status_reason}</td>', file=html_f)
                 if response_url != "":
-                    print(f'          <td class="adaptive"><a class="adaptive" href="{response_url}" target="_blank">{response_url}</td>', file=html_file)
+                    print(f'          <td class="adaptive"><a class="adaptive" href="{response_url}" target="_blank">{response_url}</td>', file=html_f)
                 else:
-                    print('          <td class="adaptive"></td>', file=html_file)
-                print('        </tr>', file=html_file)
-        finish_html(html_file)
+                    print('          <td class="adaptive"></td>', file=html_f)
+                print('        </tr>', file=html_f)
+        finish_html(html_f)
 
 
-def start_html(html_file):
+def start_html(html_f):
     html_start = """\
     <!DOCTYPE html>
     <html lang="en">
@@ -187,25 +194,24 @@ def start_html(html_file):
             </tr>
           </thead>
           <tbody>"""
-    print(textwrap.dedent(html_start), file=html_file)
+    print(textwrap.dedent(html_start), file=html_f)
 
 
-def finish_html(html_file):
+def finish_html(html_f):
     html_finish = """\
           </tbody>
         </table>
       </body>
     </html>
     """
-    print(textwrap.dedent(html_finish), file=html_file)
+    print(textwrap.dedent(html_finish), file=html_f)
 
 
 def main():
     args = parse_args()
-    init_logging(args)
+    init_logging(args.log_file, args.log_level)
     logger.info(__file__ + ' started')
-    # Process the CSV file and write the HTML file.
-    process_csv_data(args)
+    process_csv_data(args.csv_file, args.html_file)
     logger.info(__file__ + ' finished')
 
 
