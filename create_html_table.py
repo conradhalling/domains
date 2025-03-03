@@ -181,7 +181,7 @@ def start_html(html_f):
 
       <body>
         <table class="adaptive">
-          <caption>Domains from the .science TLD starting with "a"</caption>
+          <caption>Domains from the .science TLD</caption>
           <thead>
             <tr class="adaptive">
               <th class="adaptive">domain</th>
