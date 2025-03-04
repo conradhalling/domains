@@ -1,19 +1,22 @@
-"""
+r"""
 DESCRIPTION
-    Read the output CSV file and create an HTML file with
-    the data in a table with links.
+
+Read the output CSV file and create an HTML file with the data in a table with
+links.
 
 EXAMPLES
-    python3 create_html_table.py --help
 
-    python3 create_html_table.py
-        --csv_file      data/output/a_science.csv \
-        --html_file     data/output/a_science.html \
-        --log_level     info
+python3 create_html_table.py --help
+
+python3 create_html_table.py
+    --csv_file      data/output/a_science.csv \
+    --html_file     data/output/a_science.html \
+    --log_level     info
 
 NOTES
-    I copied the background color and link colors for dark mode from the Mozilla
-    Developer Network dark theme.
+
+I copied the background color and link colors for dark mode from the Mozilla
+Developer Network dark theme.
 """
 
 import argparse

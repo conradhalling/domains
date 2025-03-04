@@ -1,24 +1,29 @@
 r"""
 DESCRIPTION
 
-Extract the distinct domains from the given cdx files, sort the values in
-reverse order by the number of hits, and write the results to a compressed
-text file.
+Extract the distinct domains for a given TLD and sort the values in reverse order
+by the number of hits.
+
+This requires looking at the cdx-nnnnn.gz files, which are sorted alphabetically
+by TLD, to find the files containing the TLD you're interested in. Or you could
+download all the files (230 GB of .gz files) and process them all.
 
 EXAMPLES
 
-python3 extract_domains.py \
+python3 extract_domains_for_tld.py \
+    --tld           .science \
     --cdx_file      data/2025-08/cdx/cdx-00278.gz \
-    --out_file      data/2025-08/names/domains-00278.txt.gz \
-    --log_file      logs/extract_domains.log \
+    --out_file      data/2025-08/names/domains-science.txt \
+    --log_file      logs/extract_domains_for_tld.log \
     --log_level     debug
 
-python3 extract_domains_for_tld.py \
+    python3 extract_domains_for_tld.py \
+    --tld           .info \
     --cdx_file      data/2025-05/cdx/cdx-00200.gz \
     --cdx_file      data/2025-05/cdx/cdx-00201.gz \
     --cdx-file      data/2025-05/cdx/cdx-00202.gz \
-    --out_file      data/2025-05/names/domains-00200-00201-00202.txt.gz \
-    --log_file      logs/extract_domains.log \
+    --out_file      data/2025-05/names/domains-info.txt \
+    --log_file      logs/extract_domains_for_tld.log \
     --log_level     debug
 """
 
@@ -52,10 +57,16 @@ def parse_args():
         epilog=textwrap.dedent(f"""
         Example:
           python3 {os.path.basename(__file__)} \\
+            --tld        .science \\
             --cdx_file   data/2025-08/cdx/cdx-00278.gz \\
-            --out_file   data/2025-08/names/domains-00278.txt.gz \\
+            --out_file   data/2025-08/names/domains-science.txt \\
             --log_file   logs/extract_domains.log \\
             --log_level  info""")
+    )
+    parser.add_argument(
+        "--tld",
+        help="TLD for domains to extract",
+        required=True
     )
     parser.add_argument(
         "--cdx_file",
@@ -100,9 +111,10 @@ def main():
     init_logging(log_file=args.log_file, log_level=args.log_level)
     logger.info(__file__ + " started")
     total_dict = dict()
+    tld = args.tld
     # For my purposes, a URL ends with ":", "/", or "?", or exhausts the string,
     # which is terminated with '"'.
-    pattern = "{}\"url\": \"https?://([^:?/\"]+?)[:?/\"]".format("{")
+    pattern = "{}\"url\": \"https?://([^:?/\"]+?\\{})[:?/\"]".format("{", tld)
     logger.debug(f"pattern: {pattern}")
     for cdx_file in args.cdx_file:
         logger.info(f"  Processing {cdx_file}...")
@@ -110,9 +122,9 @@ def main():
         total_dict.update(file_dict)
         logger.info("    Done.")
     sorted_by_values = dict(sorted(total_dict.items(), key=lambda item: item[1], reverse=True))
-    with gzip.open(args.out_file, "wb") as out_f:
+    with open(args.out_file, "w") as out_f:
         for key, value in sorted_by_values.items():
-            out_f.write("{} {}\n".format(key, value).encode())
+            print("{} {}".format(key, value), file=out_f)
     logger.info(__file__ + " finished")
 
 

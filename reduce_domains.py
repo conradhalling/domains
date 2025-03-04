@@ -1,12 +1,14 @@
-"""
+r"""
+DESCRIPTION
+
 Reduce a domain like shs.hal.science to hal.science to build a list
-of domains found in the Common Crawl data.
+of primary domains found in the Common Crawl data.
 
-The input files are:
-    -   data/names/domains-info.4.txt
-    -   data/names/domains-science.4.txt
+EXAMPLE
 
-Write the output to a text file, e.g., reduced-domains-info.txt.
+python3 reduce_comains.py \
+    --input_file    data/2025-05/names/domains-info.4.txt \
+    --output_file   data/2025-05/output/reduced-domains-info.txt
 """
 
 import argparse
