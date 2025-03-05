@@ -48,21 +48,17 @@ DESCRIPTION
 EXAMPLES
     python3 check_domains.py --help
 
-    # Process some domains from the .science TLD.
-    python3 check_domains.py \
-        --domains_file  data/names/a_science.txt \
-        --csv_file      data/output/a_science.csv \
-        --log_level     info
+    # Process domains from Common Crawl data.
+    python3 check_cc_domains.py \
+        --in_file    data/cc/merged/domains-science.merged.csv \
+        --out_file   data/cc/merged/domains-science.merged.checked.csv \
+        --log_level  info
 
-    # Test with 11 domains from the .science TLD.
-    python3 check_domains.py \
-        --domains_file  data/names/test_domains.txt \
-        --csv_file      data/output/test_domains.csv \
-        --log_level     info
-
-NOTES
-    This script provides examples of using the following packages: argparse,
-    csv, dataclasses, logging, os.path, fake_useragent, and requests.
+    # Process domains from whois searches.
+    python3 check_whois_domains.py \
+        --in_file    data/whois/0-9_science.sorted.txt \
+        --out_file   data/whois/0-9_science.sorted.checked.csv \
+        --log_level  info
 """
 
 import argparse
