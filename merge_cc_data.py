@@ -8,8 +8,8 @@ python3 merge_cc_data.py -\
     --data_set      2024-51 \
     --data_set      2025-05 \
     --data_set      2025-08 \
-    --in_file       domains-science.reduced.txt \
-    --csv_file      data/cc/merged/science.merged.csv \
+    --in_file       hostnames-science.csv \
+    --out_file      data/cc/merged/hostnames-science.merged.csv \
     --log_file      logs/combine_cc_data.log \
     --log_level     info
 """
@@ -39,17 +39,18 @@ def parse_args():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description="Merge Common Crawl domain data",
-        epilog=textwrap.dedent(f"""
+        epilog=textwrap.dedent(rf"""
         Example:
-          python3 {os.path.basename(__file__)} \\
-            --data_dir   data/cc \\
-            --data_set   2024-51 \\
-            --data_set   2025-05 \\
-            --data_set   2025-08 \\
-            --in_file    domains-science.reduced.txt \\
-            --csv_file   domains-science.merged.csv \\
-            --log_file   logs/merge_cc_data.log \\
-            --log_level  info""")
+          python3 {os.path.basename(__file__)} \
+            --data_dir   data/cc \
+            --data_set   2024-51 \
+            --data_set   2025-05 \
+            --data_set   2025-08 \
+            --in_file    hostnames-science.csv \
+            --csv_file   data/cc/merged/hostnames-science.merged.csv \
+            --log_file   logs/merge_cc_data.log \
+            --log_level  info"""
+        )
     )
     parser.add_argument(
         "--data_dir",
@@ -64,12 +65,12 @@ def parse_args():
     )
     parser.add_argument(
         "--in_file",
-        help="data file for each dataset",
+        help="input file for each data set",
         required=True,
     )
     parser.add_argument(
-        "--csv_file",
-        help="output CSV file",
+        "--out_file",
+        help="output CSV file containing merged data",
         required=True,
     )
     parser.add_argument(
@@ -87,35 +88,41 @@ def parse_args():
     return args
 
 
-def merge_cc_data(data_dir, data_sets, in_file, csv_file):
-    # Merge the data using a dictionary.
-    domains_dict = {}
+def merge_cc_data(data_dir, data_sets, in_file, out_file):
+    # Merge the data using a dictionary using a dict, where the values
+    # are overwritten for a hostname if the hostname appears in a later data set.
+    hostnames_dict = {}
     for data_set in data_sets:
         in_path = os.path.join(data_dir, data_set, in_file)
         logger.debug(f"in_path: {in_path}")
-        for line in open(in_path, "r"):
-            domain = line.strip()
-            domains_dict[domain] = data_set
-    domains_list = list(domains_dict.keys())
-    domains_list.sort()
+        # The input file is a CSV file with columns hostname, domain, and page_count.
+        with open(in_path, "r") as in_f:
+            csv_reader = csv.reader(in_f)
+            # Skip the header row.
+            header_line = next(csv_reader)
+            for row in csv_reader:
+                (hostname, domain, page_count) = row
+                hostnames_dict[hostname] = (hostname, domain, data_set, page_count)
     # Write the merged data to a csv file.
-    with open(csv_file, "w") as csv_f:
+    with open(out_file, "w") as csv_f:
         csv_writer = csv.writer(csv_f)
         csv_writer.writerow(
             [
+                "hostname",
                 "domain",
                 "data_set",
+                "page_count",
             ]
         )
-        for domain in domains_list:
-            csv_writer.writerow([domain, domains_dict[domain]])
+        for row in hostnames_dict.values():
+            csv_writer.writerow(row)
 
 
 def main():
     args = parse_args()
     init_logging(log_file=args.log_file, log_level=args.log_level)
     logger.info(__file__ + " started")
-    merge_cc_data(data_dir=args.data_dir, data_sets=args.data_set, in_file=args.in_file, csv_file=args.csv_file)
+    merge_cc_data(data_dir=args.data_dir, data_sets=args.data_set, in_file=args.in_file, out_file=args.out_file)
     logger.info(__file__ + " finished")
 
 
